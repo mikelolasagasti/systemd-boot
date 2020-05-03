@@ -17,7 +17,7 @@ galaxy_info:
   - boot
   - security
   - systemd
-  - systemd-boot
+  - systemdboot
 
 dependencies: []
 

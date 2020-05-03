@@ -8,15 +8,15 @@
 - name: Exit if efi dir doesn't exist
   fail:
     msg: System didn't boot with EFI support
-  when: not efi_firmware_dir.stat.exists 
+  when: not efi_firmware_dir.stat.exists
 
 - name: check uuid for /boot/efi
-  set_fact: 
+  set_fact:
     uuid_efi: "{{ ansible_mounts|json_query('[?mount == `/boot/efi`].uuid') | join(', ') }}"
   when: "ansible_mounts|json_query('[?mount == `/boot/efi`]')"
 
 - name: check uuid for /efi
-  set_fact: 
+  set_fact:
     uuid_efi: "{{ ansible_mounts|json_query('[?mount == `/efi`].uuid') | join(', ') }}"
   when: "ansible_mounts|json_query('[?mount == `/efi`]') "
 
@@ -37,8 +37,8 @@
     mode: '0700'
     owner: root
     group: root
-  when: not efi_dir.stat.exists 
-  
+  when: not efi_dir.stat.exists
+
 - name: Remove /boot/efi from fstab
   mount:
     path: /boot/efi
@@ -67,11 +67,11 @@
     mode: '0700'
     owner: root
     group: root
-  when: not efi_machine_id_dir.stat.exists 
+  when: not efi_machine_id_dir.stat.exists
 
 - name: Remove grub2 and related packages
   dnf:
-    name: 
+    name:
       - grub2-common
       - grub2-efi-ia32
       - grub2-efi-ia32-cdboot
