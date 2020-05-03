@@ -1,0 +1,23 @@
+galaxy_info:
+  author: Mikel Olasagasti Uranga
+  description: Enable systemd-boot
+  company:
+
+  license: GPL-3.0-or-later
+
+  min_ansible_version: 2.9
+
+  platforms:
+  - name: Fedora
+    versions:
+    - 32
+    - 31
+
+  galaxy_tags:
+  - boot
+  - security
+  - systemd
+  - systemd-boot
+
+dependencies: []
+

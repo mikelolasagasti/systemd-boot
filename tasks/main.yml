@@ -1,0 +1,116 @@
+---
+# tasks file for systemd-boot
+- name: Check if /sys/firmware/efi is available
+  stat:
+    path: /sys/firmware/efi
+  register: efi_firmware_dir
+
+- name: Exit if efi dir doesn't exist
+  fail:
+    msg: System didn't boot with EFI support
+  when: not efi_firmware_dir.stat.exists 
+
+- name: check uuid for /boot/efi
+  set_fact: 
+    uuid_efi: "{{ ansible_mounts|json_query('[?mount == `/boot/efi`].uuid') | join(', ') }}"
+  when: "ansible_mounts|json_query('[?mount == `/boot/efi`]')"
+
+- name: check uuid for /efi
+  set_fact: 
+    uuid_efi: "{{ ansible_mounts|json_query('[?mount == `/efi`].uuid') | join(', ') }}"
+  when: "ansible_mounts|json_query('[?mount == `/efi`]') "
+
+- name: Fail if no uuid_efi is defined
+  fail:
+    msg: "No uuid_efi defined, couldn't determine UUID for EFI partition"
+  when: not uuid_efi
+
+- name: Check if /efi exists
+  stat:
+    path: /efi
+  register: efi_dir
+
+- name: Create /efi if needed
+  file:
+    path: /efi
+    state: directory
+    mode: '0700'
+    owner: root
+    group: root
+  when: not efi_dir.stat.exists 
+  
+- name: Remove /boot/efi from fstab
+  mount:
+    path: /boot/efi
+    state: absent
+
+- name: Add and mount /efi in fstab
+  mount:
+    path: /efi
+    state: mounted
+    src: UUID={{ uuid_efi }}
+    fstype: vfat
+    opts: umask=0077,shortname=winnt
+    dump: '0'
+    passno: '2'
+
+- name: Check if machine-id exists in /efi/ exists
+  stat:
+    path: /efi/{{ ansible_machine_id }}
+  register: efi_machine_id_dir
+
+
+- name: Create machine-id in /efi
+  file:
+    path: /efi/{{ ansible_machine_id }}
+    state: directory
+    mode: '0700'
+    owner: root
+    group: root
+  when: not efi_machine_id_dir.stat.exists 
+
+- name: Remove grub2 and related packages
+  dnf:
+    name: 
+      - grub2-common
+      - grub2-efi-ia32
+      - grub2-efi-ia32-cdboot
+      - grub2-efi-x64
+      - grub2-efi-x64-cdboot
+      - grub2-pc
+      - grub2-pc-modules
+      - grub2-tools
+      - grub2-tools-efi
+      - grub2-tools-extra
+      - grub2-tools-minimal
+      - grubby
+      - shim-x64
+      - "memtest86+"
+    state: removed
+
+- name: Delete /boot/grub2
+  file:
+    path: /boot/grub2
+    state: absent
+- name: Delete /boot/loader
+  file:
+    path: /boot/loader
+    state: absent
+
+- name: Create cmdline
+  shell: "cut -d ' ' -f2- < /proc/cmdline"
+  register: cmdline
+
+- name: Create /etc/kernel/cmdline
+  shell: "echo {{ cmdline.stdout }} > /etc/kernel/cmdline"
+
+- name: bootctl install
+  command: "bootctl install"
+
+- name: kernel-install
+  shell: "kernel-install add $(uname -r) /lib/modules/$(uname -r)/vmlinuz"
+
+- name: reinstall kernel-core (takes a while)
+  command: "dnf -y reinstall kernel-core"
+  args:
+    warn: false
